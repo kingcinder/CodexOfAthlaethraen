@@ -1,0 +1,38 @@
+[build-system]
+requires = ["setuptools>=65", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "the-assistant"
+version = "0.1.0"
+description = "SQLite-backed memory containment vessel utilities for The Assistant"
+readme = "README.md"
+authors = [
+    { name = "The Assistant" }
+]
+requires-python = ">=3.10"
+license = { text = "MIT" }
+keywords = ["assistant", "memory", "sqlite"]
+classifiers = [
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3 :: Only",
+    "License :: OSI Approved :: MIT License",
+    "Operating System :: OS Independent",
+]
+dependencies = []
+
+[project.urls]
+Homepage = "https://example.com/the-assistant"
+Repository = "https://example.com/the-assistant"
+
+[project.scripts]
+the-assistant = "the_assistant.__main__:cli_entrypoint"
+
+[tool.setuptools]
+package-dir = {"" = "."}
+include-package-data = true
+
+[tool.setuptools.packages.find]
+where = ["."]
+include = ["the_assistant*"]
+exclude = ["tests*"]
