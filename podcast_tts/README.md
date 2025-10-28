@@ -100,11 +100,15 @@ You can point `--samples` at one or more directories or individual files. If
 you would rather enter transcripts inline, swap `--transcript-file` for a
 series of `--transcripts "First sentence" "Second sentence" ...` arguments.
 
-Use the generated reference file directly with the synthesiser:
+Use the generated reference file directly with the synthesiser.  You can also
+reference the emitted `*_profile.json` files with the new
+`--speaker-profiles` option; the script will pull the corresponding reference
+WAV paths automatically.
 
 ```bash
 python podcast_tts/synthesize_podcast.py transcripts/episode1.txt \
-  --speaker-wavs assets/voices/host_reference.wav assets/voice_ai.wav
+  --speaker-profiles assets/voices/host_profile.json \
+  --speaker-wavs assets/voice_ai.wav
 ```
 
 ## 7. Optional: fine-tune XTTS on your recordings
@@ -177,21 +181,30 @@ python podcast_tts/synthesize_podcast.py transcripts/episode1.txt \
   --output-dir build/episode1 \
   --model tts_models/multilingual/multi-dataset/xtts_v2 \
   --language en \
-  --speaker-wavs assets/voice_alex.wav assets/voice_ai.wav \
+  --speaker-profiles assets/voices/host_profile.json \
+  --speaker-wavs assets/voice_ai.wav \
   --turn-threshold 1 \
   --progress \
-  --gap-ms 150
+  --gap-ms 150 \
+  --normalize-mix
 ```
 
 Key options:
 
 * `--speaker-wavs`: alternating list of reference clips. You can supply more than two to rotate through additional guests.
 * `--speakers`: use built-in voice names if you prefer synthetic voices.
+* `--speaker-profiles`: load one or more JSON profiles produced by
+  `create_voice_profile.py` and use their `reference_wav` paths automatically.
 * `--turn-threshold`: increases beyond 1 when you expect the same person to speak for multiple turns in a row.
 * `--split-mode sentence`: split by sentences instead of paragraphs when transcripts lack blank lines.
 * `--emotion`: for models that support style tokens (e.g. `happy`, `sad`, `narration`).
 * `--gap-ms`: amount of silence inserted between turns in the combined master mix. Increase for more breathing room.
 * `--device`: force `cpu`, `cuda`, or `rocm`. The default `auto` picks the best available backend.
+* `--normalize-mix`: peak-normalise the final `podcast_mix.wav` to the value
+  specified by `--mix-peak` (default 0.98) to avoid clipping when multiple
+  speakers overlap.
+* `--mix-peak`: adjust the target amplitude for mix normalisation (useful if you
+  want to leave additional headroom for music beds).
 
 The script creates individual `turn_XXX.wav` files plus a `podcast_mix.wav` file that lines up the dialogue sequentially (with configurable silence). You can import the stems into any DAW for mastering.
 
