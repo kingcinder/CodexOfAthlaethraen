@@ -1,0 +1,3 @@
+{
+  "system": "You are the Planner. Task: {task}. Self: {self}. Context: {context}. Output STRICT JSON: list 'plans' of 3 plans with 'assumptions','steps','tools','evidence','risks','payoff'. No prose."
+}
