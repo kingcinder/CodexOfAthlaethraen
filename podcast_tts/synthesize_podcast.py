@@ -1,0 +1,235 @@
+#!/usr/bin/env python3
+"""Synthesize a back-and-forth podcast style dialogue using Coqui TTS.
+
+This script accepts a plain-text transcript without explicit speaker labels
+and alternates between two (or more) configured voices to generate an audio
+track for each turn as well as a combined mix.
+
+Usage example::
+
+    python synthesize_podcast.py transcript.txt \
+        --output-dir build/output \
+        --model tts_models/multilingual/multi-dataset/xtts_v2 \
+        --language en \
+        --speaker-wavs speaker_a.wav speaker_b.wav
+
+The script intentionally exposes simple heuristics for splitting dialogue
+turns and assigning speakers. The defaults assume the transcript is already in
+chronological order and each new paragraph indicates a speaker change. Advanced
+logic can be enabled with ``--split-mode sentence`` to force sentence-level
+splits and ``--turn-threshold`` to limit maximum consecutive turns per voice.
+"""
+from __future__ import annotations
+
+import argparse
+import json
+from pathlib import Path
+from typing import Iterable, List, Sequence
+
+from TTS.api import TTS
+
+
+def _read_transcript(transcript_path: Path) -> str:
+    text = transcript_path.read_text(encoding="utf-8")
+    if not text.strip():
+        raise ValueError("The transcript is empty. Please provide dialogue text.")
+    return text
+
+
+def _normalize_lines(text: str, split_mode: str) -> List[str]:
+    """Split transcript into dialogue turns.
+
+    Parameters
+    ----------
+    text:
+        Raw transcript text.
+    split_mode:
+        Either ``paragraph`` (default) or ``sentence``.
+    """
+    import re
+
+    # Normalise all Windows-style newlines and trim whitespace.
+    normalized = text.replace("\r\n", "\n").strip()
+
+    if split_mode == "sentence":
+        parts = re.split(r"(?<=[.!?]\")\s+|(?<=[.!?])\s+(?=[\"'\(\[]*[A-Z0-9])", normalized)
+    else:
+        # Collapse multiple blank lines to a single delimiter and split.
+        parts = re.split(r"\n\s*\n", normalized)
+
+    turns = [re.sub(r"\s+", " ", part.strip()) for part in parts if part.strip()]
+    if not turns:
+        raise ValueError("No dialogue turns could be extracted. Check formatting.")
+    return turns
+
+
+def _cycle_speakers(speakers: Sequence[str], max_consecutive: int) -> Iterable[str]:
+    if not speakers:
+        raise ValueError("At least one speaker reference must be provided.")
+    if max_consecutive < 1:
+        raise ValueError("max_consecutive must be at least 1.")
+
+    if len(speakers) == 1:
+        while True:
+            for _ in range(max_consecutive):
+                yield speakers[0]
+    else:
+        while True:
+            for speaker in speakers:
+                for _ in range(max_consecutive):
+                    yield speaker
+
+
+def _load_speakers(args: argparse.Namespace) -> List[str]:
+    if args.speaker_wavs:
+        return [str(Path(path).expanduser().resolve()) for path in args.speaker_wavs]
+    if args.speaker_json:
+        data = json.loads(Path(args.speaker_json).read_text(encoding="utf-8"))
+        if not isinstance(data, list) or not all(isinstance(p, str) for p in data):
+            raise ValueError("speaker_json must contain a JSON list of paths to wav files")
+        return [str(Path(path).expanduser().resolve()) for path in data]
+    if args.speakers:
+        return list(args.speakers)
+    raise ValueError("Provide --speaker-wavs, --speaker-json, or --speakers.")
+
+
+def _prepare_output_dir(output_dir: Path) -> None:
+    output_dir.mkdir(parents=True, exist_ok=True)
+
+
+def _mix_wav_files(input_files: Sequence[Path], output_file: Path) -> None:
+    import soundfile as sf
+    import numpy as np
+
+    waveforms = []
+    samplerates = []
+    for path in input_files:
+        audio, sr = sf.read(path)
+        waveforms.append(audio)
+        samplerates.append(sr)
+    if len(set(samplerates)) != 1:
+        raise RuntimeError("All generated wav files must share the same sample rate.")
+
+    sr = samplerates[0]
+    max_len = max(wave.shape[0] for wave in waveforms)
+
+    padded = []
+    for wave in waveforms:
+        if wave.ndim == 1:
+            wave = wave[:, None]
+        if wave.shape[0] < max_len:
+            padding = np.zeros((max_len - wave.shape[0], wave.shape[1]), dtype=wave.dtype)
+            wave = np.concatenate([wave, padding], axis=0)
+        padded.append(wave)
+
+    stacked = np.sum(padded, axis=0)
+    max_abs = np.max(np.abs(stacked))
+    if max_abs > 1.0:
+        stacked = stacked / max_abs
+
+    sf.write(output_file, stacked, sr)
+
+
+def synthesize_dialogue(args: argparse.Namespace) -> Path:
+    transcript_path = Path(args.transcript).expanduser().resolve()
+    output_dir = Path(args.output_dir).expanduser().resolve()
+    _prepare_output_dir(output_dir)
+
+    turns = _normalize_lines(_read_transcript(transcript_path), args.split_mode)
+    speakers = _load_speakers(args)
+
+    tts = TTS(model_name=args.model, progress_bar=args.progress).to(args.device)
+
+    speaker_cycle = _cycle_speakers(speakers, args.turn_threshold)
+
+    generated_paths: List[Path] = []
+    for index, (turn, speaker_ref) in enumerate(zip(turns, speaker_cycle)):
+        file_name = f"turn_{index + 1:03d}.wav"
+        file_path = output_dir / file_name
+        kwargs = {"file_path": str(file_path)}
+        if speaker_ref.lower().endswith((".wav", ".mp3", ".flac", ".ogg")):
+            kwargs["speaker_wav"] = speaker_ref
+        else:
+            kwargs["speaker"] = speaker_ref
+        if args.language:
+            kwargs["language"] = args.language
+        if args.emotion:
+            kwargs["emotion"] = args.emotion
+        tts.tts_to_file(turn, **kwargs)
+        generated_paths.append(file_path)
+
+    mix_path = output_dir / "podcast_mix.wav"
+    _mix_wav_files(generated_paths, mix_path)
+    return mix_path
+
+
+def build_arg_parser() -> argparse.ArgumentParser:
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument("transcript", help="Path to the input transcript text file.")
+    parser.add_argument(
+        "--output-dir",
+        default="build/tts_output",
+        help="Directory where synthesized wav files will be stored.",
+    )
+    parser.add_argument(
+        "--model",
+        default="tts_models/multilingual/multi-dataset/xtts_v2",
+        help="Coqui TTS model identifier to load.",
+    )
+    parser.add_argument(
+        "--language",
+        default="en",
+        help="Language token for multilingual models (e.g., en, es, de).",
+    )
+    parser.add_argument(
+        "--speaker-wavs",
+        nargs="*",
+        help="Paths to reference audio samples for voice cloning (wav/flac/mp3).",
+    )
+    parser.add_argument(
+        "--speaker-json",
+        help="JSON file containing a list of reference audio sample paths.",
+    )
+    parser.add_argument(
+        "--speakers",
+        nargs="*",
+        help="Names of built-in multi-speaker voices (if supported by the model).",
+    )
+    parser.add_argument(
+        "--turn-threshold",
+        type=int,
+        default=1,
+        help="Maximum consecutive turns before rotating to the next speaker.",
+    )
+    parser.add_argument(
+        "--split-mode",
+        choices=["paragraph", "sentence"],
+        default="paragraph",
+        help="Dialogue turn segmentation heuristic.",
+    )
+    parser.add_argument(
+        "--emotion",
+        help="Optional emotion/style token supported by certain models.",
+    )
+    parser.add_argument(
+        "--device",
+        default="auto",
+        help="torch device to use (auto, cpu, cuda, or rocm).",
+    )
+    parser.add_argument(
+        "--progress",
+        action="store_true",
+        help="Display the TTS library progress bar while generating audio.",
+    )
+    return parser
+
+
+def main() -> None:
+    parser = build_arg_parser()
+    args = parser.parse_args()
+    mix_path = synthesize_dialogue(args)
+    print(f"Combined mix saved to: {mix_path}")
+
+
+if __name__ == "__main__":
+    main()
