@@ -11,7 +11,8 @@ Usage example::
         --output-dir build/output \
         --model tts_models/multilingual/multi-dataset/xtts_v2 \
         --language en \
-        --speaker-wavs speaker_a.wav speaker_b.wav
+        --speaker-wavs speaker_a.wav speaker_b.wav \
+        --gap-ms 150
 
 The script intentionally exposes simple heuristics for splitting dialogue
 turns and assigning speakers. The defaults assume the transcript is already in
@@ -97,37 +98,51 @@ def _prepare_output_dir(output_dir: Path) -> None:
     output_dir.mkdir(parents=True, exist_ok=True)
 
 
-def _mix_wav_files(input_files: Sequence[Path], output_file: Path) -> None:
+def _concatenate_turns(
+    input_files: Sequence[Path], output_file: Path, gap_ms: float = 0.0
+) -> None:
     import soundfile as sf
     import numpy as np
 
-    waveforms = []
-    samplerates = []
+    sr: int | None = None
+    channels: int | None = None
+
+    segments: list[np.ndarray] = []
     for path in input_files:
-        audio, sr = sf.read(path)
-        waveforms.append(audio)
-        samplerates.append(sr)
-    if len(set(samplerates)) != 1:
-        raise RuntimeError("All generated wav files must share the same sample rate.")
+        audio, current_sr = sf.read(path)
+        if sr is None:
+            sr = current_sr
+        elif current_sr != sr:
+            raise RuntimeError("All generated wav files must share the same sample rate.")
 
-    sr = samplerates[0]
-    max_len = max(wave.shape[0] for wave in waveforms)
+        if audio.ndim == 1:
+            audio = audio[:, None]
+        if channels is None:
+            channels = audio.shape[1]
+        elif audio.shape[1] != channels:
+            raise RuntimeError("All generated wav files must have the same number of channels.")
 
-    padded = []
-    for wave in waveforms:
-        if wave.ndim == 1:
-            wave = wave[:, None]
-        if wave.shape[0] < max_len:
-            padding = np.zeros((max_len - wave.shape[0], wave.shape[1]), dtype=wave.dtype)
-            wave = np.concatenate([wave, padding], axis=0)
-        padded.append(wave)
+        segments.append(audio.astype(np.float32, copy=False))
 
-    stacked = np.sum(padded, axis=0)
-    max_abs = np.max(np.abs(stacked))
-    if max_abs > 1.0:
-        stacked = stacked / max_abs
+    if sr is None or channels is None:
+        raise RuntimeError("No dialogue turns were generated; cannot create master mix.")
 
-    sf.write(output_file, stacked, sr)
+    gap_samples = 0
+    if gap_ms > 0:
+        gap_samples = max(1, int(round((gap_ms / 1000.0) * sr)))
+    if gap_samples > 0:
+        silence = np.zeros((gap_samples, channels), dtype=np.float32)
+    else:
+        silence = None
+
+    timeline: list[np.ndarray] = []
+    for index, segment in enumerate(segments):
+        timeline.append(segment)
+        if silence is not None and index < len(segments) - 1:
+            timeline.append(silence)
+
+    master = np.concatenate(timeline, axis=0)
+    sf.write(output_file, master, sr)
 
 
 def synthesize_dialogue(args: argparse.Namespace) -> Path:
@@ -159,7 +174,7 @@ def synthesize_dialogue(args: argparse.Namespace) -> Path:
         generated_paths.append(file_path)
 
     mix_path = output_dir / "podcast_mix.wav"
-    _mix_wav_files(generated_paths, mix_path)
+    _concatenate_turns(generated_paths, mix_path, gap_ms=args.gap_ms)
     return mix_path
 
 
@@ -220,6 +235,12 @@ def build_arg_parser() -> argparse.ArgumentParser:
         "--progress",
         action="store_true",
         help="Display the TTS library progress bar while generating audio.",
+    )
+    parser.add_argument(
+        "--gap-ms",
+        type=float,
+        default=120.0,
+        help="Silence inserted between turns in the combined mix (milliseconds).",
     )
     return parser
 

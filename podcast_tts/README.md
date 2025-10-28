@@ -179,7 +179,8 @@ python podcast_tts/synthesize_podcast.py transcripts/episode1.txt \
   --language en \
   --speaker-wavs assets/voice_alex.wav assets/voice_ai.wav \
   --turn-threshold 1 \
-  --progress
+  --progress \
+  --gap-ms 150
 ```
 
 Key options:
@@ -189,9 +190,10 @@ Key options:
 * `--turn-threshold`: increases beyond 1 when you expect the same person to speak for multiple turns in a row.
 * `--split-mode sentence`: split by sentences instead of paragraphs when transcripts lack blank lines.
 * `--emotion`: for models that support style tokens (e.g. `happy`, `sad`, `narration`).
+* `--gap-ms`: amount of silence inserted between turns in the combined master mix. Increase for more breathing room.
 * `--device`: force `cpu`, `cuda`, or `rocm`. The default `auto` picks the best available backend.
 
-The script creates individual `turn_XXX.wav` files plus a `podcast_mix.wav` file that lines up the dialogue in order. You can import the stems into any DAW for mastering.
+The script creates individual `turn_XXX.wav` files plus a `podcast_mix.wav` file that lines up the dialogue sequentially (with configurable silence). You can import the stems into any DAW for mastering.
 
 ## 10. Fine-tuning cadence and pacing
 
