@@ -13,7 +13,7 @@ class LogicReasoner:
         self.rules.append((premise.lower(), conclusion.lower()))
 
     def evaluate(self, facts: Iterable[str]) -> List[Dict[str, str]]:
-        fact_set = {fact.lower() for fact in facts}
+        fact_set = {fact.lower() for fact in facts if isinstance(fact, str)}
         derivations: List[Dict[str, str]] = []
         for premise, conclusion in self.rules:
             if premise in fact_set and conclusion not in fact_set:
@@ -51,8 +51,21 @@ class ReasoningSuite:
     def evaluate(self, task: str, context: Dict[str, object]):
         report: Dict[str, object] = {}
         if self.logic:
-            facts = context.get("facts", [])
-            derivations = self.logic.evaluate(facts if isinstance(facts, list) else [])
+            raw_facts = context.get("facts", [])
+            fact_list = list(raw_facts) if isinstance(raw_facts, list) else []
+            normalized: List[str] = []
+            for fact in fact_list:
+                if isinstance(fact, str):
+                    normalized.append(fact)
+                elif isinstance(fact, dict):
+                    text = fact.get("text") or fact.get("doc")
+                    if text:
+                        normalized.append(str(text))
+                elif isinstance(fact, (list, tuple)) and fact:
+                    normalized.append(str(fact[0]))
+                else:
+                    normalized.append(str(fact))
+            derivations = self.logic.evaluate(normalized)
             if derivations:
                 report["logic"] = derivations
         if self.causal:
