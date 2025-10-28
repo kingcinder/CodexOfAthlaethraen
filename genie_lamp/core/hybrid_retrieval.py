@@ -12,7 +12,9 @@ class HybridRetriever:
         self.vector_store = vector_store
         memory_cfg = cfg.get("memory", {})
         self.sqlite_path = memory_cfg.get("sqlite_path", "./data/fts.db")
-        os.makedirs(os.path.dirname(self.sqlite_path), exist_ok=True)
+        directory = os.path.dirname(self.sqlite_path)
+        if directory:
+            os.makedirs(directory, exist_ok=True)
         self.conn = sqlite3.connect(self.sqlite_path)
         self._ensure_schema()
 

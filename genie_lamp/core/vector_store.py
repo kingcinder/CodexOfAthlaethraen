@@ -1,3 +1,5 @@
+from uuid import uuid4
+
 from sentence_transformers import SentenceTransformer
 
 class VectorStore:
@@ -18,7 +20,7 @@ class VectorStore:
         texts = [t for t,_ in items]; metas = [m for _,m in items]
         embs = self.model.encode(texts).tolist()
         if self.backend == "chroma":
-            ids = [f"id_{i}" for i,_ in enumerate(texts)]
+            ids = [str(uuid4()) for _ in texts]
             self.col.add(ids=ids, metadatas=metas, documents=texts, embeddings=embs)
         else:
             x = self.np.array(embs, dtype="float32")
