@@ -28,8 +28,18 @@ self_model:
   confidence_decay_days: 21
 
 tts:
-  engine: pyttsx3
   voice: "default"
+  fallback_voice: "english"
+  rate: 185
+  volume: 0.9
+  async_playback: false
+  persist_audio: false
+  cache_dir: "./data/audio_cache"
+  playback_backend: "pydub"
+  driver: "espeak"
+  preload_samples:
+    - "Genie Lamp boot sequence complete."
+    - "Your Linux synthesizer is ready."
 
 vision:
   ocr_lang: "eng"

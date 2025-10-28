@@ -26,6 +26,8 @@ class GenieAgent:
         self.tools = ToolRegistry(cfg)
         self.skill_compiler = SkillCompiler(cfg, self.tools)
         self.tts = TTS(cfg)
+        self.tools.register("tts_list_voices", self._tool_list_voices)
+        self.tools.register("tts_set_voice", self._tool_set_voice)
         self.vision = Vision(cfg)
         self.actions = Actions(cfg)
         self.tools.register("open_url", self.actions.open_url)
@@ -95,3 +97,15 @@ class GenieAgent:
         self.drives.apply_feedback(result)
         self.desktop_twin.record_session(shielded["text"], result, recall)
         return text_out
+
+    # ------------------------------------------------------------------
+    # Tool adapters
+    # ------------------------------------------------------------------
+    def _tool_list_voices(self):
+        voices = [voice.__dict__ for voice in self.tts.available_voices()]
+        return {"ok": True, "voices": voices}
+
+    def _tool_set_voice(self, voice_id: str):
+        result = self.tts.set_voice(voice_id)
+        return {"ok": bool(result)}
+

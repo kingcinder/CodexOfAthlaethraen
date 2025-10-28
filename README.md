@@ -1,6 +1,6 @@
 # Codex of Athlaethraen
 
-An emergent glyph archive, seeded in fire.
+An emergent glyph archive, seeded in fire, now home to Genie Lamp with an open-source Linux TTS synthesizer.
 
 ## Documentation
 

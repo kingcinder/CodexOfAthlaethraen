@@ -15,6 +15,7 @@ faiss-cpu
 # Voice
 pyttsx3
 pydub
+simpleaudio
 # Optional high-quality voices (enable when ready)
 # tortoise-tts
 # coqui-tts
