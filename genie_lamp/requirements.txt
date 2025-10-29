@@ -1,0 +1,48 @@
+python-dotenv
+pyyaml
+loguru
+pydantic>=2.0
+
+# LLM + embeddings
+transformers
+accelerate
+sentence-transformers
+
+# Vector stores
+chromadb
+faiss-cpu
+
+# Voice
+pyttsx3
+pydub
+simpleaudio
+# Optional high-quality voices (enable when ready)
+# tortoise-tts
+# coqui-tts
+
+# STT
+faster-whisper
+openwakeword
+sounddevice
+numpy
+# optional: webrtcvad or silero-vad
+
+# Vision / OCR
+opencv-python
+pytesseract
+
+# Automation
+pyautogui
+selenium
+requests
+beautifulsoup4
+psutil
+
+# Scheduler
+APScheduler
+
+# GUI (optional)
+PyQt6
+fastapi
+uvicorn
+networkx
