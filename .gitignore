@@ -1,0 +1,10 @@
+# Local memory database artifacts
+.assistant_memory/
+
+# Python cache directories
+__pycache__/
+
+# Packaging artifacts
+*.egg-info/
+build/
+dist/
