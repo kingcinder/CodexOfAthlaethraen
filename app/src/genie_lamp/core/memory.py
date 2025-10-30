@@ -1,7 +1,7 @@
 from typing import Any, Dict, List, Tuple
 
-from core.hybrid_retrieval import HybridRetriever
-from core.vector_store import VectorStore
+from genie_lamp.core.hybrid_retrieval import HybridRetriever
+from genie_lamp.core.vector_store import VectorStore
 
 class Memory:
     def __init__(self, cfg):
