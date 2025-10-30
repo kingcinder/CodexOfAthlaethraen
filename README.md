@@ -1,38 +1,33 @@
 # Codex of Athlaethraen
 
-An emergent glyph archive, seeded in fire, now home to Genie Lamp with an open-source Linux TTS synthesizer.
+Genie Lamp now ships as a Windows-first, offline-friendly FastAPI service with reproducible build tooling.
 
-## Documentation
+## Quickstart
+- **Windows:** `./run.ps1`
+- **Linux:** `./run.sh`
 
-- [Super Saiyan Genie Lamp — Codex Implementation Package](docs/super_saiyan_genie_lamp.md)
-An emergent glyph archive, seeded in fire.
+Both scripts execute environment diagnostics, editable installation, wheel build, service launch, health checks, smoke tests, and log tailing. Structured logs land in `artifacts/logs/` and model caches in `artifacts/models/`.
 
-## The Assistant Memory Vessel
+See [`docs/QUICKSTART.md`](docs/QUICKSTART.md) for detailed instructions, container usage, and configuration guidance.
 
-This repository now integrates the "scalable-ai-memory-containment-vessel" project
-as a native Python package named `the_assistant`.  The package provides a simple
-SQLite-backed memory store that can be used to persist and query conversational
-state for The Assistant.
-
-### Installation
-
-Install the package in editable mode to experiment locally:
-
-```bash
-pip install -e .
+## Repository Layout
+```
+/
+├─ app/                  # Source, configs, tests
+├─ artifacts/            # Logs, models, runtime state
+├─ containers/           # Docker assets
+├─ docs/                 # Operational documentation
+├─ scripts/              # Automation (PowerShell & Bash)
+├─ tools/                # Utilities
+└─ run.(ps1|sh)          # Single-command orchestration
 ```
 
-Once installed you can invoke the console script directly via `the-assistant` or
-call the module using Python.
+## Key Automation Assets
+- **Bootstrap & install:** `scripts/bootstrap.ps1` (Windows) / `scripts/install.sh` (Linux) — create or update `.venv` and perform editable installs.
+- **One-step repair:** `scripts/repair-venv.ps1` — deletes and recreates `.venv`, runs `ensurepip`, and reinstalls the package with pinned dependencies while logging to `artifacts/logs/repair-*.log`.
+- **Service orchestration:** `run.ps1` / `run.sh` — orchestrate diagnostics, install, build, launch, health checks, smoke tests, and log tailing in a single command.
+- **Model cache helper:** `scripts/fetch-model.ps1` / `scripts/fetch-model.sh` — populate `artifacts/models/sentence-transformers/all-MiniLM-L6-v2/` when offline caches are missing.
+- **Operational docs:** `docs/QUICKSTART.md`, `docs/CONFIG.md`, and `docs/TROUBLESHOOTING.md` — detail install, configuration precedence, reloader behaviour, and recovery steps.
 
-### Quick start
-
-```bash
-the-assistant store "Remember the sigils." --tags lore urgent
-the-assistant recent --limit 5
-the-assistant summarize
-```
-
-Memories are written to `.assistant_memory/memories.db` by default.  Use the
-`--storage` flag to point at a different location.  The CLI supports additional
-commands to search, purge, and export stored fragments.
+## Legacy Glyphs
+Historical manuscripts remain under `docs/super_saiyan_genie_lamp.md` and auxiliary projects like `the_assistant/` continue to ship with the repo.

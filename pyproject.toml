@@ -1,38 +1,65 @@
 [build-system]
-requires = ["setuptools>=65", "wheel"]
+requires = ["setuptools>=70", "wheel>=0.44", "pip>=25.3"]
 build-backend = "setuptools.build_meta"
 
 [project]
-name = "the-assistant"
-version = "0.1.0"
-description = "SQLite-backed memory containment vessel utilities for The Assistant"
+name = "genie-lamp"
+version = "1.0.0"
+description = "Genie Lamp — feature-complete local agent"
 readme = "README.md"
-authors = [
-    { name = "The Assistant" }
+requires-python = ">=3.11,<3.12"
+dependencies = [
+  "fastapi==0.120.2",
+  "starlette==0.49.1",
+  "uvicorn==0.38.0",
+  "loguru==0.7.3",
+  "numpy==2.3.4",
+  "faiss-cpu==1.12.0",
+  "sentence-transformers==5.1.2",
+  "transformers==4.57.1",
+  "tokenizers==0.22.1",
+  "torch==2.9.0",
+  "tqdm==4.67.1",
+  "pyyaml==6.0.3",
+  "typing-extensions==4.15.0",
+  "typing-inspection==0.4.2",
+  "requests==2.32.5",
+  "fsspec==2025.9.0",
+  "jinja2==3.1.6",
 ]
-requires-python = ">=3.10"
-license = { text = "MIT" }
-keywords = ["assistant", "memory", "sqlite"]
-classifiers = [
-    "Programming Language :: Python :: 3",
-    "Programming Language :: Python :: 3 :: Only",
-    "License :: OSI Approved :: MIT License",
-    "Operating System :: OS Independent",
-]
-dependencies = []
 
-[project.urls]
-Homepage = "https://example.com/the-assistant"
-Repository = "https://example.com/the-assistant"
+[project.optional-dependencies]
+tests = [
+  "pytest==8.3.4",
+]
 
 [project.scripts]
-the-assistant = "the_assistant.__main__:cli_entrypoint"
+genie-lamp = "genie_lamp.__main__:main"
 
 [tool.setuptools]
-package-dir = {"" = "."}
-include-package-data = true
+package-dir = {"" = "app/src"}
+packages = [
+  "genie_lamp",
+  "genie_lamp.api",
+  "genie_lamp.core",
+  "genie_lamp.gui",
+  "genie_lamp.lantern",
+  "genie_lamp.observability",
+  "genie_lamp.prompts",
+  "genie_lamp.rehearsal",
+  "genie_lamp.rituals",
+  "genie_lamp.rooms",
+  "genie_lamp.scheduler",
+  "genie_lamp.shield",
+  "genie_lamp.skills",
+  "genie_lamp.speech",
+  "genie_lamp.tools",
+  "genie_lamp.voice",
+]
 
-[tool.setuptools.packages.find]
-where = ["."]
-include = ["the_assistant*"]
-exclude = ["tests*"]
+[tool.setuptools.package-data]
+"genie_lamp" = ["py.typed"]
+
+[tool.pytest.ini_options]
+testpaths = ["app/tests"]
+addopts = "-q"

@@ -1,5 +1,7 @@
-import time, json
-from core.utils import now_ts
+import json
+import time
+
+from genie_lamp.core.utils import now_ts
 
 class LLM:
     def generate(self, prompt: str, max_tokens: int = 512) -> str:

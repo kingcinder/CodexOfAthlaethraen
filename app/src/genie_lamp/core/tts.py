@@ -3,7 +3,11 @@ from __future__ import annotations
 
 from loguru import logger
 
-from voice import LinuxTTSSynthesizer, SynthesizerConfig, SynthesizerError
+from genie_lamp.voice import (
+    LinuxTTSSynthesizer,
+    SynthesizerConfig,
+    SynthesizerError,
+)
 
 
 class TTS:
